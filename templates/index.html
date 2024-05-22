@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Flow Grapher</title>
+  <script src="https://cdn.plaid.com/link/v2/stable/link-initialize.js"></script>
+</head>
+
+<body>
+  <button id="link-button">Connect a bank account</button>
+
+  <script>
+    async function getLinkToken() {
+      const response = await fetch('/create_link_token');
+      const data = await response.json();
+      return data.link_token;
+    }
+
+    document.getElementById('link-button').onclick = async function () {
+      const linkToken = await getLinkToken();
+      var linkHandler = Plaid.create({
+        token: linkToken,
+        onSuccess: function (public_token, metadata) {
+          fetch('/exchange_public_token', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ public_token: public_token }),
+          })
+            .then(response => response.json())
+            .then(data => {
+              console.log('Access token:', data.access_token);
+            })
+            .catch(error => {
+              console.error('Error exchanging public token:', error);
+            });
+        },
+        onExit: function (err, metadata) {
+          if (err != null) {
+            console.error('Plaid Link error:', err);
+          }
+        }
+      });
+      linkHandler.open();
+    };
+  </script>
+</body>
+
+</html>
